@@ -16,7 +16,7 @@ export const Auth = () =>{
   try {
       const response = await axios.post("https://backend.saraswatdevesh98.workers.dev/api/v1/user/signup", postInputs);
    
-      const jwt = JSON.stringify(response.data);
+      
       
 localStorage.setItem("token", response.data);
 
