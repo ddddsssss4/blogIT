@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { SignupInput } from '@100xdevs/medium-common'
+import { SignupInput , createBlogInput} from '@100xdevs/medium-common'
 import { PrismaClient } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import { sign, verify } from 'hono/jwt'
@@ -15,40 +15,34 @@ export const bookRouter = new Hono<{
   }
 }>();
 
-bookRouter.use('/*', async (c,next) => {
-  const jwt = c.req.header('authorization')
-
-  if(!jwt){
-    c.status(401);
-    return c.json({
-      error: "unathorized"
-    })
-  }
-  const payLoad = await verify(jwt,c.env.JWT_SECRET)
-  if (!payLoad) {
-		c.status(401);
-		return c.json({ error: "unauthorized" });
-	}
-  c.set('userId', payLoad.id);
-  console.log(payLoad.id);
-	await next()
-});
+// bookRouter.use('/*', async (c,next) => {
+  
+// 	await next()
+// });
   
 
 bookRouter.post('/', async (c) => {
-	const userId = c.get('userId');
+	
 	const prisma = new PrismaClient({
 		datasourceUrl: c.env?.DATABASE_URL	,
 	}).$extends(withAccelerate());
 
 	const body = await c.req.json();
+	// c.set('userId' , "12345")
+	// const userId = c.get('userId');
+	// console.log(userId);
+	const token = body.jwt;
+	console.log(token);
+	const decodedPayload = await verify(token, c.env.JWT_SECRET);
+
 	const post = await prisma.post.create({
-		data: {
-			title: body.title,
-			content: body.content,
-			authorId: userId
-		}
-	});
+    data: {
+        title: body.title,
+        content: body.content,
+        authorId : decodedPayload.id
+    }
+});
+
 	return c.json({
 		id: post.id
 	});
@@ -60,9 +54,17 @@ bookRouter.get('/bulk', async (c) => {
 		datasourceUrl: c.env?.DATABASE_URL	,
 	}).$extends(withAccelerate());
 	
-	const post = await prisma.post.findMany()
-
-   	return c.json(post);
+	const blogs = await prisma.post.findMany({
+		include: {
+				author: {
+						select: {
+								name: true // Select only the name field from the author
+						}
+				}
+		}
+})
+console.log(blogs);
+   	return c.json(blogs);
 
 
 })
@@ -73,12 +75,13 @@ bookRouter.get('/:id', async (c) => {
 	const prisma = new PrismaClient({
 		datasourceUrl: c.env?.DATABASE_URL	,
 	}).$extends(withAccelerate());
-	
+
 	const post = await prisma.post.findFirst({
 		where: {
 		id: id
 		}
 	});
+	console.log(post);
 
 	return c.json(post);
 

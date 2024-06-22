@@ -4,8 +4,10 @@ import { PrismaClient } from '@prisma/client/edge'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import { sign } from 'hono/jwt'
 const prisma = new PrismaClient().$extends(withAccelerate())
+import { cors } from 'hono/cors'
 
 import { bookRouter } from './routes/blog'
+import { userRouter } from './routes/user'
 const app = new Hono<{
   Bindings: {
     DATABASE_URL:string
@@ -13,11 +15,10 @@ const app = new Hono<{
   }
 }>()
 
+app.use('/*' , cors())
+
 app.route('/api/v1/blog',bookRouter)
-app.get('/',(c)=>{
-  return c.text("ggdgs")
-  
-})
+app.route('/api/v1/user',userRouter)
 app.post('/', async (c) => {
   console.log("chalega");
   const prisma = new PrismaClient({
@@ -49,6 +50,9 @@ if(!success){
   
     jwt: token
   })
+})
+app.get('/' , async(c)=>{
+  c.text("hello");
 })
 
 export default app
