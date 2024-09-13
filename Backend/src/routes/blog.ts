@@ -9,9 +9,6 @@ export const bookRouter = new Hono<{
   Bindings: {
       DATABASE_URL: string;
       JWT_SECRET: string;
-  },
-  Variables: {
-      userId: string
   }
 }>();
 
@@ -21,32 +18,56 @@ export const bookRouter = new Hono<{
 // });
   
 
+
 bookRouter.post('/', async (c) => {
-	
-	const prisma = new PrismaClient({
-		datasourceUrl: c.env?.DATABASE_URL	,
-	}).$extends(withAccelerate());
+  const prisma = new PrismaClient({
+    datasourceUrl: c.env?.DATABASE_URL,
+  }).$extends(withAccelerate());
 
-	const body = await c.req.json();
-	// c.set('userId' , "12345")
-	// const userId = c.get('userId');
-	// console.log(userId);
-	const token = body.jwt;
-	console.log(token);
-	const decodedPayload = await verify(token, c.env.JWT_SECRET);
+  try {
+    const body = await c.req.json();
+    console.log('Received body:', body);
 
-	const post = await prisma.post.create({
-    data: {
+    const token = body.jwt;
+    console.log('Received token:', token);
+
+    const decodedPayload = await verify(token, c.env.JWT_SECRET);
+    console.log('Decoded payload:', decodedPayload);
+     const user = await prisma.user.findUnique({
+      where: {
+        id:String(decodedPayload.id)
+      },
+     })
+     console.log(user.role);
+     if(user.role){
+      return c.json({
+        error: 'Only authors are allowed to create post'
+      },403)
+     }
+     const post = await prisma.post.create({
+      data: {
         title: body.title,
         content: body.content,
-        authorId : decodedPayload.id
-    }
-});
+        authorId: String(decodedPayload.id),
+        authorDescription: body.authorDescription,
+        categoryId: body.categoryId,
+        branchId: body.branchId, // Optional, only required for Academics category
+        imageUrl: body.imageUrl, // Optional, if provided
+      },
+    });
 
-	return c.json({
-		id: post.id
-	});
-})
+    await prisma.$disconnect();
+
+    return c.json({
+      id: post.id,
+    });
+  } catch (error) {
+    console.error('Error occurred:', error);
+    return c.json({ error: 'An error occurred' }, 500);
+  } finally {
+    await prisma.$disconnect();
+  }
+});
 
 bookRouter.get('/bulk', async (c) => {
 
@@ -55,14 +76,19 @@ bookRouter.get('/bulk', async (c) => {
 	}).$extends(withAccelerate());
 	
 	const blogs = await prisma.post.findMany({
-		include: {
-				author: {
-						select: {
-								name: true // Select only the name field from the author
-						}
+		select: {
+			id: true,
+			title: true,
+			content: true,
+			published: true,
+			createdAt: true,  // Include the createdAt field
+			author: {
+				select: {
+					name: true
 				}
+			}
 		}
-})
+	});
 console.log(blogs);
    	return c.json(blogs);
 
@@ -88,36 +114,9 @@ bookRouter.get('/:id', async (c) => {
 
 })
   
-bookRouter.put('/', async (c) => {
-	const userId = c.get('userId');
-	const prisma = new PrismaClient({
-		datasourceUrl: c.env?.DATABASE_URL	,
-	}).$extends(withAccelerate());
 
-	const body = await c.req.json();
-	const update= await prisma.post.update({
-		where: {
-			id: parseInt(body.id),
-			authorId: userId
-		},
-		data: {
-			title: body.title,
-			content: body.content
-     
-      
-		}
-	});
- const Post = await prisma.post.findFirst({
-		where: {
-		id:parseInt(body.id)
-		}
-	});
-
-	return c.json(Post);
-});
 
   
-
 
 
 

@@ -18,13 +18,14 @@ userRouter.post('/signup', async (c) => {
   }).$extends(withAccelerate());
 
   const body = await c.req.json();
+  console.log(body);
   const {success} = signupInput.safeParse(body)
 if(!success){
 
 
   c.status(411);
   return c.json({
-    message: "Inputs are correct"
+    message: "Inputs are incorrect"
   })
 }
   
@@ -34,11 +35,12 @@ if(!success){
       email: body.username,
       password: body.password,
       name: body.name,
+      role:  body.role,
     },
   });
 
   const token = await sign({ id: user.id }, c.env.JWT_SECRET)
-  
+  console.log(token);
   return c.json(token);
 })
   
@@ -55,13 +57,13 @@ userRouter.post('/signin', async (c) => {
             
         }
     });
-
+    console.log(user);
     if (!user) {
         c.status(403);
         return c.json({ error: "user not found" });
     }
 
     const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
-    return c.json({ jwt });
+    return c.json(jwt);
 })
 
