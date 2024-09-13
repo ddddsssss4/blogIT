@@ -32,7 +32,7 @@ export const Publish = () => {
                     <button
                         onClick={async () => {
                             const response = await axios.post(
-                                "http://127.0.0.1:8787/api/v1/blog",
+                                "https://backend.saraswatdevesh98.workers.dev/api/v1/blog",
                                 {
                                     title,
                                     content: description,
